@@ -1,0 +1,45 @@
+<ion-modal-view>
+  <ion-header-bar class="bar bar-header bar-positive">
+    <h1 class="title">New Todo item</h1>
+    <button class="button button-clear button-primary" ng-click="closeAddForm()">Cancel</button>
+  </ion-header-bar>
+  <ion-content class="padding">
+    <div class="list">
+      <label class="item item-input item-stacked-label">
+        <span class="input-label">Title</span>
+        <input type="text" placeholder="Do laundry" ng-model="todo.title">
+      </label>
+      <label class="item item-input item-stacked-label">
+        <span class="input-label">Deadline</span>
+        <input type="date" placeholder="deadline" ng-model="todo.deadline.day">
+        <input type="time" ng-model="todo.deadline.hour">
+      </label>
+      <label class="item item-input item-select">
+        <span class="input-label">Priority</span>
+        <select ng-model="todo.priority">
+          <option value="0" selected>Normal</option>
+          <option value="1">Urgent</option>
+        </select>
+      </label>
+      <div class="item item-toggle">
+         Reminde Me
+         <label class="toggle toggle-assertive">
+           <input ng-click="showReminder()" ng-model="todo.reminder" type="checkbox">
+           <div class="track">
+             <div class="handle"></div>
+           </div>
+         </label>
+      </div>
+      <label ng-show="reminder" class="item item-input item-stacked-label">
+        <span class="input-label">At</span>
+        <input ng-model="todo.remindeAt.day" type="date">
+        <input type="time" ng-model="todo.remindeAt.hour">
+      </label>
+      <label class="item item-input item-stacked-label">
+        <span class="input-label">Description</span>
+        <textarea  placeholder="(Optional)" ng-model="todo.description"></textarea>
+      </label>
+      <button class="button button-full button-positive" ng-click="addTodo(todo)">Create</button>
+    </div>
+  </ion-content>
+</ion-modal-view>

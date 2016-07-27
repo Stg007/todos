@@ -59,10 +59,43 @@ function getIcon(state){
       return 'img/doneIcon.png';
   }
 }
-app.controller("indexCtrl",function($scope,$stateParams){
-  $scope.addTodo = function(){
-    console.log("yup");
+
+app.controller("indexCtrl",function($scope,$stateParams,$ionicModal){
+  $scope.reminder = false;
+  $scope.showReminder = function(){
+        $scope.reminder = !$scope.reminder;
   }
+
+  $ionicModal.fromTemplateUrl('templates/addTodoForm.html', function($ionicModal) {
+        $scope.modal = $ionicModal;
+    }, {
+        scope: $scope,
+        animation: 'slide-in-up'
+    });
+
+  $scope.openAddForm = function(){
+    $scope.modal.show();
+  }
+  $scope.closeAddForm = function(){
+    $scope.modal.hide();
+  }
+  $scope.$on('$destroy', function() {
+    $scope.modal.remove();
+  });
+  $scope.addTodo = function(todo){
+    // check validity
+    if(todo.title!= undefined && todo.deadline.day!= undefined){
+        if(todo.reminder==true && (todo.remindeAt.day == undefined || todo.remindeAt.hour)){
+          console.log('error');
+        }
+        else{
+          console.log('good');
+        }
+    }else{
+      console.log('not valide');
+    }
+  }
+
   $scope.todos = [
     {
       title : 'Acheter le pin a mon retour',
