@@ -1,0 +1,15 @@
+/* Empty. Add your own CSS if you like */
+
+/*
+  Add Todo style
+*/
+.add_todo{
+  background-color: #0c60ee;
+  border-radius: 24px;
+  bottom: 5px;
+  color: white;
+  height: 40px;
+  position: absolute;
+  width: 40px;
+  right: 5px;
+}

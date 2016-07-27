@@ -1,0 +1,13 @@
+<ion-view title="Index">
+  <ion-content class="has-header">
+    <ul class="list">
+          <li ng-repeat="todo in todos" class="item">
+            <h2>{{todo.title}}<h2/>
+              <p style="float:left">Before : {{todo.deadline}}</p>
+              <img style="float:right;max-height:20px;" ng-src="{{todo.icon}}"/>
+          </li>
+    </ul>
+    <button class="button button-icon ion-compose add_todo" ng-click="addTodo()"></button>
+
+  </ion-content>
+</ion-view>
