@@ -14,39 +14,43 @@ app.run(function($ionicPlatform,$cordovaSQLite) {
       if(window.StatusBar) {
         StatusBar.styleDefault();
       }
-      db = $cordovaSQLite.openDB({
-        name : "todolist.db",
-        location: 'default'
-      });
-      $cordovaSQLite.execute(db,'CREATE TABLE IF NOT EXISTS todos (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, priority INTEGER, deadline NUMERIC, description TEXT,created NUMERIC)');
+      // db = $cordovaSQLite.openDB({
+      //   name : "todolist.db",
+      //   location: 'default'
+      // });
+      // $cordovaSQLite.execute(db,'CREATE TABLE IF NOT EXISTS todos (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, priority INTEGER, state BOOL DEFAULT 0,deadline NUMERIC, description TEXT,created NUMERIC)');
     });
 })
 .config(function($stateProvider, $urlRouterProvider){
+  /*
+  There is only one state (one view,one controller) to serve
+  all the requests, the parameter [status] refers to the query
+  params : 0 -> Home, All todos sorted by the creation date
+  params : 1 -> done todos
+  params : 2 -> urgent todos (none done but deadline is greater than now)
+  params : 3 -> normal todos (none done but deadline is greater than now)
+  params : 4 -> none done todos (where the deadline is lesser than now)
+  ----------
+  the second state handle the detailed view
+  */
   $stateProvider
   .state('index',{
     url : '/',
     templateUrl : 'templates/index.html',
+    params : {
+      status : 0
+    },
     controller : 'indexCtrl'
-  })
-  .state('doneTodos',{
-    url : '/donetd',
-    templateUrl : 'templates/doneTodos.html',
-    controller : 'doneTodosCtrl'
-  })
-  .state('noneDoneTodos',{
-    url : '/nonedonetd',
-    templateUrl : 'templates/noneDoneTodos.html',
-    controller : 'nonedoneTodosCtrl'
   })
   .state('todoDetails',{
     url : '/nonedonetd/:idTodo',
-    templateUrl : 'templates/noneDoneTodos.html',
+    templateUrl : 'templates/detailed.html',
     controller : 'todoDetailsCtrl'
   });
   $urlRouterProvider.otherwise('/');
 });
 
-function getIcon(state){
+function getIcon(state,deadline){
   switch (state) {
     case 0:
       return 'img/doneIcon.png';
@@ -60,7 +64,6 @@ function getIcon(state){
 }
 
 app.factory('DBLayer',function($cordovaSQLite){
-
   return {
         insertTodo : function(title,priority,deadline,description,created,cb){
            $cordovaSQLite.execute(db,'INSERT INTO todos (title, priority, deadline, description,created) VALUES (?,?,?,?)',[title,priority,deadline,description,created])
@@ -70,12 +73,55 @@ app.factory('DBLayer',function($cordovaSQLite){
             cb({opState : false, message : 'Error : '+error });
           });
         },
-        get
+        getAllTodos : function(cb){
+          var query = 'select * from todos order by created';
+          $cordovaSQLite.execute(db,query).then(function(res){
+              cb({opState : true, results : res});
+          }, function(err){
+              cb({opState : false, results : null});
+          });
+        },
+        getDoneTodos : function(){
+          var query = 'select * from todos where state=1 order by created';
+          $cordovaSQLite.execute(db,query).then(function(res){
+                cb({opState : true, results : res});
+          }, function(err){
+            cb({opState : false, results : null});
+          });
+        },
+        getUrgentTodos : function(){
+          var query = 'select * from todos where state=0 AND priority=1 order by deadline';
+          $cordovaSQLite.execute(db,query).then(function(res){
+                cb({opState : true, results : res});
+          }, function(err){
+            cb({opState : false, results : null});
+          });
+        },
+        getNoneDoneTodos : function(){
+          var query = 'select * from todos where state=0 AND deadline<=NOW() order by created';
+          $cordovaSQLite.execute(db,query).then(function(res){
+                cb({opState : true, results : res});
+          }, function(err){
+            cb({opState : false, results : null});
+          });
+        },
+        getNormalTodos : function(){
+          var query = 'select * from todos where state=0 AND priority=0 order by deadline';
+          $cordovaSQLite.execute(db,query).then(function(res){
+                cb({opState : true, results : res});
+          }, function(err){
+            cb({opState : false, results : null});
+          });
+        }
       }
 });
 
-app.controller("indexCtrl",function($scope,$stateParams,$ionicModal,$cordovaToast,DBLayer){
-  // initalizing form values
+app.controller("indexCtrl",function($scope,$stateParams,$ionicModal,$cordovaToast,DBLayer,$ionicSideMenuDelegate){
+  $scope.toggleLeft = function() {
+    console.log('yup');
+    $ionicSideMenuDelegate.toggleLeft();
+  };
+  // initalizing form values (for adding a new todo item)
   $scope.todo = {
     title : "",
     deadline : new Date(),
@@ -84,19 +130,20 @@ app.controller("indexCtrl",function($scope,$stateParams,$ionicModal,$cordovaToas
     description : ""
   }
   $scope.reminder = false;
-
+  // used inside the form
   $scope.showReminder = function(){
         $scope.reminder = !$scope.reminder;
   }
-
+  // Defining the modal to add a new todo item
   $ionicModal.fromTemplateUrl('templates/addTodoForm.html', function($ionicModal) {
         $scope.modal = $ionicModal;
-    }, {
-        scope: $scope,
-        animation: 'slide-in-up'
-    });
+  }, {
+      scope: $scope,
+      animation: 'slide-in-up'
+  });
 
   $scope.openAddForm = function(){
+    console.log('executed');
     $scope.modal.show();
   }
   $scope.closeAddForm = function(){
@@ -105,6 +152,9 @@ app.controller("indexCtrl",function($scope,$stateParams,$ionicModal,$cordovaToas
   $scope.$on('$destroy', function() {
     $scope.modal.remove();
   });
+  // end of the definition
+
+  // used to add a new todo item
   $scope.addTodo = function(){
     // check title's validity
     if($scope.todo.title == undefined || $scope.todo.title.length<3){
@@ -125,38 +175,74 @@ app.controller("indexCtrl",function($scope,$stateParams,$ionicModal,$cordovaToas
     }
   }
 
-  $scope.todos = [
-    {
-      title : 'Acheter le pin a mon retour',
-      description : 'description todos 1',
-      state : 0,
-      icon : getIcon(0),
-      deadline : 'mi-nuit',
-      reminder : 'notify',
-      priority : 0
-    },
-    {
-      title : 'Todos 2',
-      description : 'description todos 2',
-      state : 1,
-      icon : getIcon(1),
-      deadline : '10',
-      reminder : 'notify',
-      priority : 0
-    },
-    {
-      title : 'Todos 3',
-      description : 'description todos 3',
-      state : 2,
-      icon : getIcon(2),
-      deadline : '10',
-      reminder : 'notify',
-      priority : 0
-    }];
-}).controller("doneTodosCtrl",function($scope,$stateParams){
+  // main instructions
+  switch ($stateParams.status) {
+    case 1:
+      console.log('Done todos');
+      DBLayer.getDoneTodos($scope.fillData);
+      break;
+    case 2:
+      console.log('Urgent todos');
+      DBLayer.getUrgentTodos($scope.fillData);
+      break;
+    case 3:
+      console.log('Normal todos');
+      DBLayer.getNormalTodos($scope.fillData);
+      break;
+    case 4:
+      console.log('None todos');
+      DBLayer.getNoneDoneTodos($scope.fillData);
+      break;
+    default:
+      console.log('All');
+      // DBLayer.getAllTodos($scope.fillData);
+  }
 
-}).controller("nonedoneTodosCtrl",function($scope,$stateParams){
+  $scope.fillData = function(queryResult){
+    $scope.todos = [];
+    if(queryResult.opState == true && queryResult.results.row.length>0){
+        for (var i = 0; i < queryResult.results.rows.length; i++) {
+          $scope.todos.push({
+            title : queryResult.results.rows.item(i).title,
+            description : queryResult.results.rows.item(i).description,
+            state : queryResult.results.rows.item(i).state,
+            icon : getIcon(queryResult.results.rows.item(i).state,queryResult.results.rows.item(i).deadline),
+            deadline : queryResult.results.rows.item(i).deadline,
+            reminder : '',
+            priority : queryResult.results.rows.item(i).priority
+          });
+        }
+    }
+  }
 
+  // $scope.todos = [
+  //   {
+  //     title : 'Acheter le pin a mon retour',
+  //     description : 'description todos 1',
+  //     state : 0,
+  //     icon : getIcon(0),
+  //     deadline : 'mi-nuit',
+  //     reminder : 'notify',
+  //     priority : 0
+  //   },
+  //   {
+  //     title : 'Todos 2',
+  //     description : 'description todos 2',
+  //     state : 1,
+  //     icon : getIcon(1),
+  //     deadline : '10',
+  //     reminder : 'notify',
+  //     priority : 0
+  //   },
+  //   {
+  //     title : 'Todos 3',
+  //     description : 'description todos 3',
+  //     state : 2,
+  //     icon : getIcon(2),
+  //     deadline : '10',
+  //     reminder : 'notify',
+  //     priority : 0
+  //   }];
 }).controller("todoDetailsCtrl",function($scope,$stateParams){
 
 });
