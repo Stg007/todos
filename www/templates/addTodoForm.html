@@ -7,17 +7,16 @@
     <div class="list">
       <label class="item item-input item-stacked-label">
         <span class="input-label">Title</span>
-        <input type="text" placeholder="Do laundry" ng-model="todo.title">
+        <input type="text" placeholder="click here to insert the title" ng-model="todo.title">
       </label>
       <label class="item item-input item-stacked-label">
-        <span class="input-label">Deadline</span>
-        <input type="date" placeholder="deadline" ng-model="todo.deadline.day">
-        <input type="time" ng-model="todo.deadline.hour">
+       <span class="input-label">Deadline</span>
+         <input type="datetime-local" ng-model="todo.deadline">
       </label>
       <label class="item item-input item-select">
         <span class="input-label">Priority</span>
         <select ng-model="todo.priority">
-          <option value="0" selected>Normal</option>
+          <option value="0" ng-selected="true">Normal</option>
           <option value="1">Urgent</option>
         </select>
       </label>
@@ -32,8 +31,7 @@
       </div>
       <label ng-show="reminder" class="item item-input item-stacked-label">
         <span class="input-label">At</span>
-        <input ng-model="todo.remindeAt.day" type="date">
-        <input type="time" ng-model="todo.remindeAt.hour">
+        <input ng-model="todo.remindmeAt" type="datetime-local">
       </label>
       <label class="item item-input item-stacked-label">
         <span class="input-label">Description</span>

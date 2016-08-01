@@ -3,24 +3,23 @@
 // angular.module is a global place for creating, registering and retrieving Angular modules
 // 'starter' is the name of this angular module example (also set in a <body> attribute in index.html)
 // the 2nd parameter is an array of 'requires'
-var app = angular.module('starter', ['ionic']);
-
-app.run(function($ionicPlatform) {
-  $ionicPlatform.ready(function() {
-    if(window.cordova && window.cordova.plugins.Keyboard) {
-      // Hide the accessory bar by default (remove this to show the accessory bar above the keyboard
-      // for form inputs)
-      cordova.plugins.Keyboard.hideKeyboardAccessoryBar(true);
-
-      // Don't remove this line unless you know what you are doing. It stops the viewport
-      // from snapping when text inputs are focused. Ionic handles this internally for
-      // a much nicer keyboard experience.
-      cordova.plugins.Keyboard.disableScroll(true);
-    }
-    if(window.StatusBar) {
-      StatusBar.styleDefault();
-    }
-  });
+var app = angular.module('starter', ['ionic','ngCordova']);
+var db = null;
+app.run(function($ionicPlatform,$cordovaSQLite) {
+    $ionicPlatform.ready(function() {
+      if(window.cordova && window.cordova.plugins.Keyboard) {
+        cordova.plugins.Keyboard.hideKeyboardAccessoryBar(true);
+        cordova.plugins.Keyboard.disableScroll(true);
+      }
+      if(window.StatusBar) {
+        StatusBar.styleDefault();
+      }
+      db = $cordovaSQLite.openDB({
+        name : "todolist.db",
+        location: 'default'
+      });
+      $cordovaSQLite.execute(db,'CREATE TABLE IF NOT EXISTS todos (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, priority INTEGER, deadline NUMERIC, description TEXT,created NUMERIC)');
+    });
 })
 .config(function($stateProvider, $urlRouterProvider){
   $stateProvider
@@ -60,8 +59,32 @@ function getIcon(state){
   }
 }
 
-app.controller("indexCtrl",function($scope,$stateParams,$ionicModal){
+app.factory('DBLayer',function($cordovaSQLite){
+
+  return {
+        insertTodo : function(title,priority,deadline,description,created,cb){
+           $cordovaSQLite.execute(db,'INSERT INTO todos (title, priority, deadline, description,created) VALUES (?,?,?,?)',[title,priority,deadline,description,created])
+          .then(function(result) {
+            cb({opState : true, message : 'Todo added sucessflly'});
+          },function(error){
+            cb({opState : false, message : 'Error : '+error });
+          });
+        },
+        get
+      }
+});
+
+app.controller("indexCtrl",function($scope,$stateParams,$ionicModal,$cordovaToast,DBLayer){
+  // initalizing form values
+  $scope.todo = {
+    title : "",
+    deadline : new Date(),
+    priority : "0",
+    remindmeAt : new Date(),
+    description : ""
+  }
   $scope.reminder = false;
+
   $scope.showReminder = function(){
         $scope.reminder = !$scope.reminder;
   }
@@ -82,17 +105,23 @@ app.controller("indexCtrl",function($scope,$stateParams,$ionicModal){
   $scope.$on('$destroy', function() {
     $scope.modal.remove();
   });
-  $scope.addTodo = function(todo){
-    // check validity
-    if(todo.title!= undefined && todo.deadline.day!= undefined){
-        if(todo.reminder==true && (todo.remindeAt.day == undefined || todo.remindeAt.hour)){
-          console.log('error');
-        }
-        else{
-          console.log('good');
-        }
+  $scope.addTodo = function(){
+    // check title's validity
+    if($scope.todo.title == undefined || $scope.todo.title.length<3){
+      $cordovaToast.showLongBottom('Title is needed at least 3 alphabetes');
+    }else if($scope.todo.deadline == undefined || Object.prototype.toString.call($scope.todo.deadline) !== "[object Date]" || isNaN($scope.todo.deadline.getTime())){
+      $cordovaToast.showLongBottom('You need to define the deadline date time (time is optional)');
+    }else if($scope.todo.priority == undefined){
+      $cordovaToast.showLongBottom('You need to define a priority');
+    }else if($scope.reminder==true && ($scope.todo.deadline == undefined || Object.prototype.toString.call($scope.todo.deadline) !== "[object Date]" || isNaN($scope.todo.deadline.getTime()))){
+      $cordovaToast.showLongBottom('You need to define a date to reminde you');
     }else{
-      console.log('not valide');
+      // data is valid
+      DBLayer.insertTodo($scope.todo.title,$scope.todo.priority,$scope.todo.deadline,$scope.todo.description,new Date(),function(result){
+        $cordovaToast.showLongBottom(result.message);
+        if(result.opState == true)
+          $scope.closeAddForm();
+      });
     }
   }
 
